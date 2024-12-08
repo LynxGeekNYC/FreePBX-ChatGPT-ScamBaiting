@@ -1,0 +1,93 @@
+To configure **FreePBX** to run a **C++ script** within a custom context, you need to create a custom dial plan in Asterisk's configuration. FreePBX uses Asterisk as its backend, so you will modify the Asterisk configuration files to route calls into a custom context that invokes your compiled C++ script.
+
+Here’s how to set it up:
+
+---
+
+### **Step 1: Place the Compiled C++ Script on Your Server**
+
+1. Compile your C++ script and ensure the binary is executable:
+   ```bash
+   g++ -o scambait scambait.cpp -lcurl -ljsoncpp
+   chmod +x /path/to/scambait
+   ```
+
+2. Place the binary in a secure location, such as `/usr/local/bin/scambait`.
+
+---
+
+### **Step 2: Edit `extensions_custom.conf` in FreePBX**
+
+1. Open the `extensions_custom.conf` file located at `/etc/asterisk/extensions_custom.conf`.
+
+2. Add a custom context that runs your script. Replace `scambait` with the path to your compiled binary:
+   ```plaintext
+   [scambait-context]
+   exten => s,1,Answer()
+   same => n,NoOp(Starting scam bait C++ script)
+   same => n,System(/usr/local/bin/scambait)
+   same => n,Hangup()
+   ```
+
+   - **Explanation**:
+     - `Answer()`: Answers the incoming call.
+     - `NoOp`: Adds a log message to indicate that the context was entered.
+     - `System()`: Executes your C++ binary.
+     - `Hangup()`: Ends the call.
+
+---
+
+### **Step 3: Create an Inbound Route in FreePBX**
+
+1. Log in to your **FreePBX web interface**.
+
+2. Go to **Connectivity → Inbound Routes**.
+
+3. Create or edit an inbound route:
+   - **DID Number**: Specify the DID you want to route to the scam-baiting context (e.g., leave blank for "any DID").
+   - **Set Destination**: Choose **Custom Destinations** and enter:
+     ```
+     scambait-context,s,1
+     ```
+
+4. Submit and apply the changes.
+
+---
+
+### **Step 4: Reload Asterisk**
+
+Reload the Asterisk configuration to apply the changes:
+```bash
+asterisk -rx "dialplan reload"
+```
+
+---
+
+### **Step 5: Test the Configuration**
+
+1. Call the DID or extension linked to the inbound route.
+
+2. Confirm that:
+   - The call is answered.
+   - The scam bait script is executed.
+   - The script logs and processes the interaction as expected.
+
+---
+
+### **Notes**
+- **Permissions**: Ensure the `asterisk` user has execute permissions for the binary:
+  ```bash
+  chown asterisk:asterisk /usr/local/bin/scambait
+  chmod +x /usr/local/bin/scambait
+  ```
+
+- **Debugging**: Use the Asterisk CLI to debug issues during the call:
+  ```bash
+  asterisk -rvvv
+  ```
+
+- **Script Path**: Update the `System()` command in the dial plan if the binary location changes.
+
+---
+
+By following these steps, your **C++ scam baiting script** will be triggered whenever a call is routed to the custom context in FreePBX.
