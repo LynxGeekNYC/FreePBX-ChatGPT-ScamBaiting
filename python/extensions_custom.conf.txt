@@ -1,0 +1,5 @@
+[from-scambait]
+exten => s,1,Answer()
+ same => n,Playback(please-hold-while-i-connect-your-call)
+ same => n,AGI(/path/to/scamb.py)
+ same => n,Hangup()
