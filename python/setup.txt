@@ -1,0 +1,142 @@
+To set up and configure the **Python script** for **FreePBX**, you need to integrate it using Asterisk's AGI (Asterisk Gateway Interface). This allows the Python script to handle call logic, such as recording, processing, and responding to calls.
+
+---
+
+### **Step 1: Place the Python Script on Your Server**
+
+1. Save the Python script to a secure directory, for example:
+   ```bash
+   /usr/local/bin/scambait.py
+   ```
+
+2. Ensure the script is executable:
+   ```bash
+   chmod +x /usr/local/bin/scambait.py
+   ```
+
+3. (Optional) Test the script:
+   - Run the script directly to ensure it works as expected:
+     ```bash
+     python3 /usr/local/bin/scambait.py
+     ```
+
+---
+
+### **Step 2: Install AGI Dependencies**
+
+1. Install required Python libraries:
+   ```bash
+   pip install google-cloud-speech google-cloud-texttospeech openai asterisk-agi
+   ```
+
+2. Ensure Python 3 is installed and available in the system's `PATH`.
+
+---
+
+### **Step 3: Edit `extensions_custom.conf`**
+
+1. Open the Asterisk configuration file:
+   ```bash
+   nano /etc/asterisk/extensions_custom.conf
+   ```
+
+2. Add a custom context to route calls to your Python script:
+   ```plaintext
+   [scambait-context]
+   exten => s,1,Answer()
+   same => n,NoOp(Starting scam bait Python script)
+   same => n,AGI(/usr/local/bin/scambait.py)
+   same => n,Hangup()
+   ```
+
+   - **Explanation**:
+     - `Answer()`: Answers the incoming call.
+     - `NoOp`: Logs an informational message in the Asterisk CLI.
+     - `AGI`: Invokes the Python script via the AGI interface.
+     - `Hangup()`: Ends the call.
+
+---
+
+### **Step 4: Set Up an Inbound Route in FreePBX**
+
+1. Log in to the **FreePBX web interface**.
+
+2. Go to **Connectivity → Inbound Routes**.
+
+3. Create or edit an inbound route:
+   - **DID Number**: Specify the DID to route to this scam-baiting setup (e.g., leave blank for "any DID").
+   - **Set Destination**: Choose **Custom Destinations** and enter:
+     ```
+     scambait-context,s,1
+     ```
+
+4. Submit and apply the configuration.
+
+---
+
+### **Step 5: Reload Asterisk**
+
+Apply the changes to Asterisk by reloading the configuration:
+```bash
+asterisk -rx "dialplan reload"
+```
+
+---
+
+### **Step 6: Test the Setup**
+
+1. Call the DID or extension associated with the inbound route.
+
+2. Monitor the Asterisk CLI for logs and debug information:
+   ```bash
+   asterisk -rvvv
+   ```
+
+3. Confirm that:
+   - The Python script is executed.
+   - The call flow behaves as expected (e.g., records scammer responses, transcribes, responds, and logs the interaction).
+
+---
+
+### **Example CLI Logs**
+When a call routes to the context, the Asterisk CLI should show something like:
+```plaintext
+    -- Executing [s@scambait-context:1] Answer("SIP/1001-00000001", "") in new stack
+    -- Executing [s@scambait-context:2] NoOp("SIP/1001-00000001", "Starting scam bait Python script") in new stack
+    -- Executing [s@scambait-context:3] AGI("/usr/local/bin/scambait.py") in new stack
+    -- Python script runs and handles the call
+    -- Executing [s@scambait-context:4] Hangup("SIP/1001-00000001", "") in new stack
+```
+
+---
+
+### **Permissions**
+
+Ensure that the `asterisk` user has the correct permissions to execute the script:
+```bash
+chown asterisk:asterisk /usr/local/bin/scambait.py
+chmod +x /usr/local/bin/scambait.py
+```
+
+---
+
+### **Optional: Debugging**
+
+- Use the Asterisk CLI for real-time debugging:
+  ```bash
+  asterisk -rvvv
+  ```
+
+- Check Python script logs (if implemented):
+  ```bash
+  tail -f /var/log/scambait.log
+  ```
+
+- Verify the Python script’s execution manually if necessary:
+  ```bash
+  python3 /usr/local/bin/scambait.py
+  ```
+
+---
+
+By following this setup, your **Python scam-baiting script** will be executed whenever a call is routed to the custom context in FreePBX. This allows for seamless integration and efficient handling of scam calls.
