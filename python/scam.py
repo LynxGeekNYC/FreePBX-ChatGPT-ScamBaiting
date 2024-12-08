@@ -1,3 +1,6 @@
+# Install Dependencies
+# pip install google-cloud-speech google-cloud-texttospeech openai asterisk-agi
+
 import os
 import openai
 from google.cloud import speech, texttospeech
